@@ -71,6 +71,5 @@ fn remove_wl_switches() {
     let args = vec!["-Wl,-a", "-b", "-wl,-c", "-Wl,-d", "-Wl,", "-Wl", "-g"];
     let result = args.remove_wl_switches();
     assert!(result.iter().any(|&el| el.starts_with("-Wl,") == false));
-    println!("{:?}", result);
     assert!(result.len() == 6);
 }
