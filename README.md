@@ -1,0 +1,1 @@
+[![Build Status](https://travis-ci.org/bradleygibson/xargo-lld-wrapper.svg?branch=master)](https://travis-ci.org/bradleygibson/xargo-lld-wrapper)

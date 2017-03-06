@@ -55,9 +55,12 @@ impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str>
     }
 }
 
-fn get_lld_path() -> String
+fn get_lld_uri() -> String
 {
-    match std::env::var("LLD_PATH") { Ok(v) => v.to_string(), Err(e) => "".to_string() }
+    std::path::PathBuf::from(match std::env::var("LLD_PATH") { Ok(v) => v, Err(e) => "".to_string() })
+                       .join("ld.lld")
+                       .to_str().unwrap()
+                       .to_string()
 }
 
 //Auto-convert from Vec<String> to Vec<&str>; https://is.gd/UbOlU2  (implement std::convert::From<Vec<String>> for Vec<&str>)
@@ -65,9 +68,9 @@ pub fn lib_main<'a, T>(args: T) where T: IntoIterator<Item=&'a str>
 {
     let fixed_args = args.remove_nostartfiles_switches()
                          .remove_wl_switches();
-    std::process::Command::new(get_lld_path() + "ld.lld").args(fixed_args)
-                                                         .spawn()
-                                                         .expect("lld command failed");
+    std::process::Command::new(get_lld_uri()).args(fixed_args)
+                                             .spawn()
+                                             .expect("lld command failed");
 }
 
 #[cfg(test)]
