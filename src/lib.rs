@@ -17,7 +17,7 @@ trait ArgsExtensionMethods<'a> where Self: IntoIterator<Item = &'a str> {
     fn remove_wl_switches(self) -> Vec<&'a str>;
 }
 
-//TODO: Return (last occurrence of) OUTPUT_FILENAME parameter, if present
+//TODO: If multiple -o params specified, return (last occurrence of) OUTPUT_FILENAME parameter, if present
 impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str> {
     fn get_output_filename(self) -> Option<&'a str> {
         self.into_iter()
@@ -35,7 +35,7 @@ impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str>
                     true => { *found_switch = true; Some(None) },
                     false => Some(Some(el)) }})
             .filter(|el| el.is_some())
-            .map(|el| el.unwrap())
+            .map(|el| el.expect("Unwrapped element found in list of Option<&str>!"))
             .collect::<Vec<_>>()
     }
 
@@ -55,25 +55,24 @@ impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str>
     }
 }
 
-fn get_lld_uri() -> String
+fn get_linker_uri() -> String
 {
-    std::path::PathBuf::from(match std::env::var("LLD_PATH") { Ok(v) => v, Err(e) => "".to_string() })
-                       .join("ld.lld")
-                       .to_str().unwrap()
-                       .to_string()
+    const LLD_PATH_KEY: &'static str = "LLD_PATH";
+    const LLD_FILENAME_KEY: &'static str = "LLD_FILENAME";
+
+    let path = match std::env::var(LLD_PATH_KEY) { Ok(v) => v, Err(_) => "".to_string() };
+    let filename = match std::env::var(LLD_FILENAME_KEY) { Ok(v) => v, Err(_) => "ld.lld".to_string() };
+    std::path::Path::new(&path).join(&filename).to_string_lossy().into_owned()
 }
 
-//Auto-convert from Vec<String> to Vec<&str>; https://is.gd/UbOlU2  (implement std::convert::From<Vec<String>> for Vec<&str>)
+//TODO: Auto-convert from Vec<String> to Vec<&str>; https://is.gd/UbOlU2
+//(implement std::convert::From<Vec<String>> for Vec<&str>)
 pub fn lib_main<'a, T>(args: T) where T: IntoIterator<Item=&'a str>
 {
     let fixed_args = args.remove_nostartfiles_switches()
                          .remove_wl_switches();
-    std::process::Command::new(get_lld_uri()).args(fixed_args)
-                                             .spawn()
-                                             .expect("lld command failed");
+    std::process::Command::new(get_linker_uri()).args(fixed_args).spawn().expect("lld command failed");
 }
 
 #[cfg(test)]
 mod tests;
-
-

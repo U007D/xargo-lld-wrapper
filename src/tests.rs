@@ -1,12 +1,45 @@
 use super::*;
+use std::path::{Path, PathBuf};
+use std::io::{Write, Error};
+use std::panic;
+
+struct ScopedFile {
+    fq_filename: PathBuf,
+}
+
+impl ScopedFile {
+    pub fn new(fq_filename: PathBuf) -> Result<ScopedFile, Error> {
+        ScopedFile::from_string(fq_filename, "")
+    }
+
+    pub fn from_string(fq_filename: PathBuf, file_contents: &str) -> Result<ScopedFile, Error> {
+        std::fs::File::create(&fq_filename)?.write_all(file_contents.as_bytes())?;
+        Ok(ScopedFile { fq_filename: fq_filename, })
+    }
+}
+
+impl Drop for ScopedFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.fq_filename);
+    }
+}
 
 #[test]
 fn app_call_with_no_params_succeeds() {
-    //FIXME: Enable test to run in CI build env (currently ld.lld not installed)
-    match std::path::Path::new(get_lld_uri().as_str()).exists() {
-        true => lib_main(Vec::<&str>::new()),
-        _ => (),
-    }
+    //create a fake lld so the app does not fail to run due to 'ld not found' error
+    const LLD_FILENAME_KEY: &'static str = "test-ld.lld";
+    const LLD_FILENAME: &'static str = "LLD_FILENAME";
+    std::env::set_var(LLD_FILENAME_KEY, LLD_FILENAME);
+
+    const LLD_PATH_ENV_KEY: &'static str = "LLD_PATH";
+    let temp_dir = std::env::temp_dir();
+    std::env::set_var(LLD_PATH_ENV_KEY, temp_dir.to_str().expect("Self-created environment variable not found!"));
+
+    let f_handle = ScopedFile::new(Path::new(&(get_linker_uri())).to_path_buf());
+    //Rust currently has no way to set the executable bit on a file, so the following will panic (permission denied)
+    //when libMain() tries to run test-ld.lld.
+    let result = panic::catch_unwind(|| lib_main(Vec::<&str>::new()));
+    assert!(result.is_err());
 }
 
 #[test]
