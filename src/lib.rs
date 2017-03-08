@@ -7,13 +7,15 @@ unsafe_code, unused_import_braces, unused_qualifications)]
 #![feature(associated_consts)]
 
 trait ArgsExtensionMethods<'a> where Self: IntoIterator<Item = &'a str> {
-    const NOSTARTFILES_SWITCH: &'static str = "-nostartfiles";
+    const NO_START_FILES_SWITCH: &'static str = "-nostartfiles";
+    const NO_DEFAULT_LIBS_SWITCH: &'static str = "-nodefaultlibs";
     const WL_SWITCH_PREFIX: &'static str = "-Wl,";
     const OUTPUT_SWITCH: &'static str = "-o";
 
     fn get_output_filename(self) -> Option<&'a str>;
+    fn remove_first_arg(self) -> Vec<&'a str>;
     fn remove_output_filename_switches_and_params(self) -> Vec<&'a str>;
-    fn remove_nostartfiles_switches(self) -> Vec<&'a str>;
+    fn remove_nostartfiles_nodefaultlibs_switches(self) -> Vec<&'a str>;
     fn remove_wl_switches(self) -> Vec<&'a str>;
 }
 
@@ -24,6 +26,13 @@ impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str>
             .skip_while(|&el| el != Self::OUTPUT_SWITCH)
             .skip(1)    //move past -o switch
             .next()
+    }
+
+    fn remove_first_arg(self) -> Vec<&'a str> {
+        self.into_iter()
+            .skip(1)
+            .take_while(|_| true)
+            .collect::<Vec<_>>()
     }
 
     //Delete all of both the OUTPUT_SWITCH and the immediately following argument (OUTPUT_FILENAME) if one is present
@@ -39,9 +48,9 @@ impl<'a, T> ArgsExtensionMethods<'a> for T where T: IntoIterator<Item = &'a str>
             .collect::<Vec<_>>()
     }
 
-    fn remove_nostartfiles_switches(self) -> Vec<&'a str> {
+    fn remove_nostartfiles_nodefaultlibs_switches(self) -> Vec<&'a str> {
         self.into_iter()
-            .filter(|&el| el != Self::NOSTARTFILES_SWITCH)
+            .filter(|&el| el != Self::NO_START_FILES_SWITCH && el != Self::NO_DEFAULT_LIBS_SWITCH)
             .collect::<Vec<_>>()
     }
 
@@ -69,7 +78,8 @@ fn get_linker_uri() -> String
 //(implement std::convert::From<Vec<String>> for Vec<&str>)
 pub fn lib_main<'a, T>(args: T) where T: IntoIterator<Item=&'a str>
 {
-    let fixed_args = args.remove_nostartfiles_switches()
+   let fixed_args = args.remove_first_arg()
+                         .remove_nostartfiles_nodefaultlibs_switches()
                          .remove_wl_switches();
     std::process::Command::new(get_linker_uri()).args(fixed_args).spawn().expect("lld command failed");
 }

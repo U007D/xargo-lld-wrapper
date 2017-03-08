@@ -96,9 +96,9 @@ fn remove_output_filename_switch_no_param() {
 }
 
 #[test]
-fn remove_nostatfiles_switch() {
+fn remove_nostartfiles_no_defaultlibs_switches() {
     let args = vec!["-a", "-nostartfiles", "-nostartfiles", "-y", "-z"];
-    let result = args.remove_nostartfiles_switches();
+    let result = args.remove_nostartfiles_nodefaultlibs_switches();
     assert!(!result.iter().any(|&el| el == "-nostartfiles"));
     assert!(result.len() == 3);
 }
